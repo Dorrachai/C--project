@@ -8,8 +8,8 @@ int Participant::getHandValue() const {
     return hand.getValue();
 }
 
-void Participant::addCard(Card* card) {
-    hand.addCard(*card);
+void Participant::addCard(const Card& card) {
+    hand.addCard(card);
 }
 
 void Participant::clearHand() {

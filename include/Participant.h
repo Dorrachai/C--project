@@ -15,7 +15,7 @@ public:
     virtual ~Participant();
     
     int getHandValue() const;
-    void addCard(Card* card);
+    void addCard(const Card& card);
     void clearHand();
     virtual void play() = 0;
     

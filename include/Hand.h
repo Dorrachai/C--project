@@ -14,6 +14,8 @@ public:
     int getValue() const;
     void clear();
     std::string toString() const;
+
+    const std::vector<Card>& getCards() const;
 };
 
 #endif

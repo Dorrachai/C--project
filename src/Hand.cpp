@@ -36,3 +36,7 @@ std::string Hand::toString() const {
     result += " (" + std::to_string(getValue()) + ")";
     return result;
 }
+
+const std::vector<Card>& Hand::getCards() const {
+    return cards;
+}

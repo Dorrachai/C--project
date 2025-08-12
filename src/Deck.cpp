@@ -19,6 +19,10 @@ Card Deck::dealCard() {
     return card;
 }
 
+std::size_t Deck::remaining() const {
+    return cards.size();
+}
+
 void Deck::reset() {
     cards.clear();
     

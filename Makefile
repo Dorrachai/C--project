@@ -1,5 +1,6 @@
 CXX = g++
 CXXFLAGS = -std=c++11 -Wall -Wextra -g -Iinclude
+LDFLAGS = -lsfml-graphics -lsfml-window -lsfml-system
 TARGET = bin/blackjack
 SRCDIR = src
 OBJDIR = obj
@@ -9,7 +10,7 @@ SOURCES = $(wildcard $(SRCDIR)/*.cpp)
 OBJECTS = $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 
 $(TARGET): $(OBJECTS) | bin
-	$(CXX) $(OBJECTS) -o $(TARGET)
+	$(CXX) $(OBJECTS) -o $(TARGET) $(LDFLAGS)
 
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@

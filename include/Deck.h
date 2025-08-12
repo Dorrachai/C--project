@@ -13,6 +13,8 @@ public:
     void shuffle();
     Card dealCard();
     void reset();
+
+    std::size_t remaining() const; 
 };
 
 #endif

@@ -76,7 +76,6 @@ int main() {
         }
 
         window.clear(sf::Color::Green);
-
         if (!inputCompleted) {
             window.draw(inputText);
             if (inputNumberOfPlayers) {
@@ -96,24 +95,27 @@ int main() {
                     window.draw(nameInputText);
                 }
             }
-
-            if (inputCompleted && !gameStarted) {
+        } else {
+            
+            if (!gameStarted) {
                 for (const auto& name : playerNames) {
                     game->addPlayer(new Player(name));
                 }
 
+                // Debug: skriv ut vilka som lades till
                 std::cout << "Players added: " << playerNames.size() << "\n";
                 for (const auto& n : playerNames) std::cout << " - " << n << "\n";
 
-                game->startRound();
+                game->startRound();   // ✅ nu finns players → PlayerTurn
                 gameStarted = true;
             }
-        } else {
+
+            // Vanlig spel-loop
             game->update();
             game->draw(window);
         }
 
-        window.display();
+window.display();
     }
 
     delete game;

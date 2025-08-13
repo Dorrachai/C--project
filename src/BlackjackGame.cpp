@@ -50,10 +50,20 @@ void BlackjackGame::initGame() {
 }
 
 void BlackjackGame::addPlayer(Participant* player) {
+    if (!player) return;
     players.push_back(player);
+    std::cout << "[ADD] Player added: " << player->getName()
+            << "   total=" << players.size() << "\n";
 }
 
 void BlackjackGame::startRound() {
+
+        if (players.empty()) {
+        std::cerr << "[GUARD] startRound() aborted: no players added\n";
+        phase = Phase::None;
+        return;
+    }
+
     std::cout << "\n=== NEW ROUND ===" << std::endl;
 
     for (auto* p : players) p->clearHand();

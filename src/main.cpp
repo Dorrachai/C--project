@@ -12,7 +12,6 @@ int main() {
     BlackjackGame* game = new BlackjackGame();
     game->initGame();
 
-    // Font för input UI
     sf::Font font;
     if (!font.loadFromFile("font/comic.ttf")) {
         std::cerr << "Error loading font!" << std::endl;
@@ -102,11 +101,10 @@ int main() {
                     game->addPlayer(new Player(name));
                 }
 
-                // Debug: skriv ut vilka som lades till
                 std::cout << "Players added: " << playerNames.size() << "\n";
                 for (const auto& n : playerNames) std::cout << " - " << n << "\n";
 
-                game->startRound();   // ✅ nu finns players → PlayerTurn
+                game->startRound();
                 gameStarted = true;
             }
 

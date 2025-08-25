@@ -185,7 +185,7 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
         if (phase == Phase::PlayerTurn && static_cast<std::size_t>(idx) == currentPlayer) {
             nameText.setFillColor(sf::Color(255, 215, 0));
         } else {
-            nameText.setFillColor(sf::Color::White);
+            nameText.setFillColor(sf::Color::Blue);
         }
         nameText.setPosition(nameX, nameY);
         window.draw(nameText);
@@ -206,7 +206,7 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
 
         if (!players.empty()) {
             sf::Text turnText("Turn: " + players[currentPlayer]->getName(), font, 22);
-            turnText.setFillColor(sf::Color::White);
+            turnText.setFillColor(sf::Color::Blue);
             turnText.setPosition(50.f, 560.f);
             window.draw(turnText);
         }

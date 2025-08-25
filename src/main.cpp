@@ -12,7 +12,6 @@ int main() {
     BlackjackGame* game = new BlackjackGame();
     game->initGame();
 
-    // Font för input UI
     sf::Font font;
     if (!font.loadFromFile("font/comic.ttf")) {
         std::cerr << "Error loading font!" << std::endl;
@@ -32,6 +31,33 @@ int main() {
     bool inputCompleted = false;
     bool gameStarted = false;
     int currentPlayerIndex = 0;
+
+    // Load background images
+    sf::Texture homeTexture, gameTexture;
+    sf::Sprite homeSprite, gameSprite;
+    bool hasHomeBackground = false, hasGameBackground = false;
+    
+    // Load home/landing page background
+    if (homeTexture.loadFromFile("home.png")) {
+        homeSprite.setTexture(homeTexture);
+        sf::Vector2u textureSize = homeTexture.getSize();
+        sf::Vector2u windowSize = window.getSize();
+        float scaleX = (float)windowSize.x / textureSize.x;
+        float scaleY = (float)windowSize.y / textureSize.y;
+        homeSprite.setScale(scaleX, scaleY);
+        hasHomeBackground = true;
+    }
+    
+    // Load game/blackjack table background
+    if (gameTexture.loadFromFile("bj_table.jpg")) {
+        gameSprite.setTexture(gameTexture);
+        sf::Vector2u textureSize = gameTexture.getSize();
+        sf::Vector2u windowSize = window.getSize();
+        float scaleX = (float)windowSize.x / textureSize.x;
+        float scaleY = (float)windowSize.y / textureSize.y;
+        gameSprite.setScale(scaleX, scaleY);
+        hasGameBackground = true;
+    }
 
     while (window.isOpen()) {
         sf::Event event;
@@ -75,8 +101,19 @@ int main() {
             }
         }
 
-        window.clear(sf::Color::Green);
-
+        // Clear window and draw appropriate background
+        if (!inputCompleted && hasHomeBackground) {
+            // Landing page - use home background
+            window.clear();
+            window.draw(homeSprite);
+        } else if (inputCompleted && hasGameBackground) {
+            // Game page - use blackjack table background
+            window.clear();
+            window.draw(gameSprite);
+        } else {
+            // Fallback to green background
+            window.clear(sf::Color::Green);
+        }
         if (!inputCompleted) {
             window.draw(inputText);
             if (inputNumberOfPlayers) {
@@ -96,8 +133,9 @@ int main() {
                     window.draw(nameInputText);
                 }
             }
-
-            if (inputCompleted && !gameStarted) {
+        } else {
+            
+            if (!gameStarted) {
                 for (const auto& name : playerNames) {
                     game->addPlayer(new Player(name));
                 }
@@ -108,12 +146,13 @@ int main() {
                 game->startRound();
                 gameStarted = true;
             }
-        } else {
+
+            // Vanlig spel-loop
             game->update();
             game->draw(window);
         }
 
-        window.display();
+window.display();
     }
 
     delete game;

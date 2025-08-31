@@ -4,6 +4,17 @@
 #include "../include/Button.h"
 #include <iostream>
 #include <sstream>
+#include <memory>
+#include <stdexcept>
+#include <exception> 
+
+static const char* defaultVerdict(int pv, int dv) {
+    if (pv > 21) return "LOSE (bust)";
+    if (dv > 21) return "WIN (dealer bust)";
+    if (pv > dv)  return "WIN";
+    if (pv < dv)  return "LOSE";
+    return "TIE";
+}
 
 static void drawCard(sf::RenderWindow& window, const Card& card, float x, float y, sf::Font& font) {
     sf::RectangleShape cardShape(sf::Vector2f(60.f, 90.f));
@@ -27,7 +38,8 @@ BlackjackGame::BlackjackGame()
     : hitButton("Hit",   200.f, 600.f, font)
     , standButton("Stand", 400.f, 600.f, font) {
 
-    dealer = new Dealer();
+    dealer = std::unique_ptr<Dealer>(new Dealer());
+    verdictFn = &defaultVerdict;
 
     if (!font.loadFromFile("font/comic.ttf")) {
         std::cerr << "Error loading font!" << std::endl;
@@ -41,24 +53,21 @@ BlackjackGame::BlackjackGame()
     totalWins = fileManager.loadTotalWins();
 }
 
-BlackjackGame::~BlackjackGame() {
-    delete dealer;
-    for (Participant* p : players) delete p;
-}
+BlackjackGame::~BlackjackGame() = default;
 
 void BlackjackGame::initGame() {
     std::cout << "Blackjack Game Initialized" << std::endl;
     deck.shuffle();
 }
 
-void BlackjackGame::addPlayer(Participant* player) {
-    players.push_back(player);
+void BlackjackGame::addPlayer(std::unique_ptr<Participant> player) {
+    players.emplace_back(std::move(player));
 }
 
 void BlackjackGame::startRound() {
     std::cout << "\n=== NEW ROUND ===" << std::endl;
 
-    for (auto* p : players) p->clearHand();
+    for (auto& up : players) up->clearHand();
     dealer->clearHand();
     resultsLines.clear();
     resultsDealerValue = 0;
@@ -68,19 +77,27 @@ void BlackjackGame::startRound() {
         deck.reset();
     }
 
-    for (int i = 0; i < 2; ++i) {
-        for (auto* p : players) {
-            if (deck.remaining() == 0) deck.reset();
-            Card c = deck.dealCard();
-            p->addCard(c);
+    try {
+        for (int i = 0; i < 2; ++i) {
+            for (auto& up : players) {
+                Card c = deck.dealCard();
+                up->addCard(c);
+            }
+            Card d = deck.dealCard();
+            dealer->addCard(d);
         }
-        Card d = deck.dealCard();
-        dealer->addCard(d);
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "Error starting round: " << ex.what() << std::endl;
+        resultsLines.clear();
+        resultsLines.push_back(std::string("ERROR: ") + ex.what());
+        phase = Phase::Results;
+        return;
     }
 
     std::cout << "Dealer: " << dealer->getHand()->toString() << "\n";
-    for (auto* p : players) {
-        std::cout << p->getName() << ": " << p->getHand()->toString() << "\n";
+    for (auto& up : players) {
+        std::cout << up->getName() << ": " << up->getHand()->toString() << "\n";
     }
 
     currentPlayer = 0;
@@ -91,14 +108,21 @@ void BlackjackGame::handleEvent(const sf::Event& event, const sf::RenderWindow& 
     if (phase != Phase::PlayerTurn || players.empty()) return;
     if (currentPlayer >= players.size()) return;
 
-    auto* p = players[currentPlayer];
+    Participant* p = players[currentPlayer].get();
 
     if (hitButton.isClicked(event, window)) {
-        if (deck.remaining() == 0) deck.reset();  
-        Card c = deck.dealCard();
-        p->addCard(c);
-        std::cout << p->getName() << " hits: " << c.toString()
-                << " -> " << p->getHand()->getValue() << std::endl;
+        try {
+            Card c = deck.dealCard();
+            p->addCard(c);
+            std::cout << p->getName() << " hits: " << c.toString()
+                    << " -> " << p->getHand()->getValue() << std::endl;
+        } catch (const std::exception& ex) {
+            std::cerr << "Error on hit: " << ex.what() << std::endl;
+            resultsLines.clear();
+            resultsLines.push_back(std::string("ERROR: ") + ex.what());
+            phase = Phase::Results;
+            return;
+        }
 
         if (p->getHandValue() > 21) {
             std::cout << p->getName() << " busts!" << std::endl;
@@ -108,6 +132,7 @@ void BlackjackGame::handleEvent(const sf::Event& event, const sf::RenderWindow& 
             }
         }
     }
+
 
     if (standButton.isClicked(event, window)) {
         std::cout << p->getName() << " stands with " << p->getHandValue() << std::endl;
@@ -121,12 +146,20 @@ void BlackjackGame::handleEvent(const sf::Event& event, const sf::RenderWindow& 
 void BlackjackGame::update() {
     if (phase == Phase::DealerTurn) {
         dealer->play();
+    try {
         while (dealer->getHandValue() < 17) {
-            if (deck.remaining() == 0) deck.reset();  
             Card c = deck.dealCard();
             dealer->addCard(c);
             std::cout << "Dealer draws: " << c.toString() << std::endl;
         }
+    }
+    catch (const std::exception& ex) {
+        std::cerr << "Error dealing to dealer: " << ex.what() << std::endl;
+        resultsLines.clear();
+        resultsLines.push_back(std::string("ERROR: ") + ex.what());
+        phase = Phase::Results;
+        return;
+    }
 
         resultsLines.clear();
         resultsDealerValue = dealer->getHandValue();
@@ -138,27 +171,19 @@ void BlackjackGame::update() {
 
         int roundWins = 0;
 
-        for (auto* p : players) {
-            int pv = p->getHandValue();
+        for (auto& up : players) {
+            int pv = up->getHandValue();
             int dv = resultsDealerValue;
 
-            std::string verdict;
-            if (pv > 21) {
-                verdict = "LOSE (bust)";
-            } else if (dv > 21) {
-                verdict = "WIN (dealer bust)";
+            const char* verdict = verdictFn(pv, dv);
+
+            if (std::string(verdict).find("WIN") != std::string::npos) {
                 roundWins += 1;
-            } else if (pv > dv) {
-                verdict = "WIN";
-                roundWins += 1;
-            } else if (pv < dv) {
-                verdict = "LOSE";
-            } else {
-                verdict = "TIE";
             }
 
             std::ostringstream row;
-            row << p->getName() << ": " << p->getHand()->toString() << "  →  " << verdict;
+            row << up->getName() << ": " << up->getHand()->toString()
+                << "  →  " << verdict;
             resultsLines.push_back(row.str());
 
             std::cout << row.str() << std::endl;
@@ -174,6 +199,7 @@ void BlackjackGame::update() {
     }
 }
 
+
 void BlackjackGame::draw(sf::RenderWindow& window) {
     float dealerX = 400.f;
     float dealerY = 50.f;
@@ -187,13 +213,13 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
     float cardSpacing  = 72.f;
 
     int idx = 0;
-    for (auto* p : players) {
+    for (auto& up : players) {
         float nameX = 60.f;
         float nameY = playerYStart + idx * rowSpacing - 30.f;
 
         sf::Text nameText;
         nameText.setFont(font);
-        nameText.setString(p->getName());
+        nameText.setString(up->getName());
         nameText.setCharacterSize(24);
         if (phase == Phase::PlayerTurn && static_cast<std::size_t>(idx) == currentPlayer) {
             nameText.setFillColor(sf::Color(255, 215, 0));
@@ -206,7 +232,7 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
         float cardX = 60.f;
         float cardY = playerYStart + idx * rowSpacing;
 
-        const auto& cards = p->getHand()->getCards();
+        const auto& cards = up->getHand()->getCards();
         for (size_t j = 0; j < cards.size(); ++j) {
             drawCard(window, cards[j], cardX + j * cardSpacing, cardY, font);
         }
@@ -249,17 +275,16 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
         float lineY = py + 50.f;
         float lineStep = 34.f;
 
+        static const auto colorFor = [](const std::string& s) {
+            if (s.rfind("Dealer:", 0) == 0) return sf::Color(173, 216, 230);
+            if (s.find("WIN")  != std::string::npos) return sf::Color(0, 255, 0);
+            if (s.find("LOSE") != std::string::npos) return sf::Color(255, 100, 100);
+            return sf::Color(255, 215, 0);
+        };
+
         for (std::size_t i = 0; i < resultsLines.size(); ++i) {
             sf::Text line(resultsLines[i], font, 22);
-            if (i == 0) {
-                line.setFillColor(sf::Color(173, 216, 230));
-            } else if (resultsLines[i].find("WIN") != std::string::npos) {
-                line.setFillColor(sf::Color(0, 255, 0));
-            } else if (resultsLines[i].find("LOSE") != std::string::npos) {
-                line.setFillColor(sf::Color(255, 100, 100));
-            } else {
-                line.setFillColor(sf::Color(255, 215, 0));
-            }
+            line.setFillColor(colorFor(resultsLines[i]));
             line.setPosition(px, lineY + i * lineStep);
             window.draw(line);
         }
@@ -273,5 +298,144 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
         hint.setFillColor(sf::Color(200, 200, 200));
         hint.setPosition(px, panel.getPosition().y + panelH - 36.f);
         window.draw(hint);
+    }
+}
+
+void BlackjackGame::run() {
+
+    sf::RenderWindow window(sf::VideoMode(1024, 768), "Blackjack", sf::Style::Default);
+    window.setFramerateLimit(60);
+
+    sf::Texture homeTexture, gameTexture;
+    sf::Sprite  homeSprite,  gameSprite;
+    bool hasHomeBackground = false, hasGameBackground = false;
+
+    auto scaleBackgrounds = [&](){
+        if (hasHomeBackground) {
+            sf::Vector2u ts = homeTexture.getSize(), ws = window.getSize();
+            homeSprite.setScale(float(ws.x)/ts.x, float(ws.y)/ts.y);
+        }
+        if (hasGameBackground) {
+            sf::Vector2u ts = gameTexture.getSize(), ws = window.getSize();
+            gameSprite.setScale(float(ws.x)/ts.x, float(ws.y)/ts.y);
+        }
+    };
+
+    if (homeTexture.loadFromFile("home.png")) {
+        homeSprite.setTexture(homeTexture);
+        hasHomeBackground = true;
+        scaleBackgrounds();
+    }
+    if (gameTexture.loadFromFile("bj_table.jpg")) {
+        gameSprite.setTexture(gameTexture);
+        hasGameBackground = true;
+        scaleBackgrounds();
+    }
+    sf::Text inputText("Enter number of players: ", font, 24);
+    inputText.setPosition(50.f, 50.f);
+
+    sf::Text playerNamesText("Enter player names:", font, 24);
+    playerNamesText.setPosition(50.f, 100.f);
+
+    int numPlayers = 0;
+    std::vector<std::string> playerNames;
+    std::string currentInput;
+    bool inputNumberOfPlayers = true;
+    bool inputCompleted = false;
+    bool gameStarted = false;
+    int  currentPlayerIndex = 0;
+
+    initGame();
+
+
+    while (window.isOpen()) {
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed) window.close();
+
+            if (!inputCompleted) {
+                if (event.type == sf::Event::TextEntered) {
+                    if (inputNumberOfPlayers) {
+                        if (event.text.unicode >= '0' && event.text.unicode <= '9') {
+                            currentInput += static_cast<char>(event.text.unicode);
+                        } else if (event.text.unicode == 8 && !currentInput.empty()) {
+                            currentInput.pop_back();
+                        } else if (event.text.unicode == 13 && !currentInput.empty()) {
+                            numPlayers = std::stoi(currentInput);
+                            currentInput.clear();
+                            inputNumberOfPlayers = false;
+                            std::cout << "Number of players: " << numPlayers << std::endl;
+                        }
+                    } else {
+                        if (event.text.unicode == 8 && !currentInput.empty()) {
+                            currentInput.pop_back();
+                        } else if (event.text.unicode == 13 && !currentInput.empty()) {
+                            playerNames.push_back(currentInput);
+                            currentInput.clear();
+                            currentPlayerIndex++;
+                            if (currentPlayerIndex >= numPlayers) {
+                                inputCompleted = true;
+                            }
+                        } else if (event.text.unicode >= 32 && event.text.unicode <= 126) {
+                            currentInput += static_cast<char>(event.text.unicode);
+                        }
+                    }
+                }
+            } else {
+                handleEvent(event, window);
+
+                if (event.type == sf::Event::KeyPressed && event.key.code == sf::Keyboard::Enter) {
+                    startRound();
+                }
+            }
+        }
+
+        if (!inputCompleted && hasHomeBackground) {
+            window.clear();
+            window.draw(homeSprite);
+        } else if (inputCompleted && hasGameBackground) {
+            window.clear();
+            window.draw(gameSprite);
+        } else {
+            window.clear(sf::Color::Green);
+        }
+
+        if (!inputCompleted) {
+            window.draw(inputText);
+            if (inputNumberOfPlayers) {
+                sf::Text numberInputText(currentInput, font, 24);
+                numberInputText.setPosition(50.f, 150.f);
+                window.draw(numberInputText);
+            } else {
+                window.draw(playerNamesText);
+                for (size_t i = 0; i < playerNames.size(); ++i) {
+                    sf::Text playerNameText(playerNames[i], font, 24);
+                    playerNameText.setPosition(50.f, 200.f + i * 40.f);
+                    window.draw(playerNameText);
+                }
+                if (!inputCompleted) {
+                    sf::Text nameInputText(currentInput, font, 24);
+                    nameInputText.setPosition(50.f, 200.f + playerNames.size() * 40.f);
+                    window.draw(nameInputText);
+                }
+            }
+        } else {
+            if (!gameStarted) {
+                for (const auto& name : playerNames) {
+                    addPlayer(std::unique_ptr<Participant>(new Player(name)));
+                }
+
+                std::cout << "Players added: " << playerNames.size() << "\n";
+                for (const auto& n : playerNames) std::cout << " - " << n << "\n";
+
+                startRound();
+                gameStarted = true;
+            }
+
+            update();
+            draw(window);
+        }
+
+        window.display();
     }
 }

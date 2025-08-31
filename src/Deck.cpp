@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <random>
 #include <chrono>
+#include <stdexcept>
 
 Deck::Deck() {
     reset();
@@ -14,6 +15,12 @@ void Deck::shuffle() {
 }
 
 Card Deck::dealCard() {
+    if (cards.empty()) {
+        reset();
+        if (cards.empty()) {
+            throw std::runtime_error("Deck::dealCard(): no cards available after reset()");
+        }
+    }
     Card card = cards.back();
     cards.pop_back();
     return card;

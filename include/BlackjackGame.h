@@ -4,6 +4,7 @@
 #include <SFML/Graphics.hpp>
 #include <vector>
 #include <string>
+#include <memory>
 #include "Deck.h"
 #include "Dealer.h"
 #include "Participant.h"
@@ -11,14 +12,17 @@
 #include "Button.h"
 
 enum class Phase { None, PlayerTurn, DealerTurn, Results };
+using VerdictFn = const char*(*)(int playerValue, int dealerValue);
 
 class BlackjackGame {
 private:
+
     Deck deck;
-    Dealer* dealer;
-    std::vector<Participant*> players;
+    std::unique_ptr<Dealer> dealer;
+    std::vector<std::unique_ptr<Participant>> players; 
     FileManager fileManager;
-    int totalWins = 0; 
+    int totalWins = 0;
+    VerdictFn verdictFn = nullptr;
     
     Phase phase = Phase::None;
     std::size_t currentPlayer = 0;
@@ -35,12 +39,13 @@ public:
     ~BlackjackGame();
 
     void initGame();
-    void addPlayer(Participant* player);
+    void addPlayer(std::unique_ptr<Participant> player);
 
     void startRound();
     void handleEvent(const sf::Event& event, const sf::RenderWindow& window);
     void update();
     void draw(sf::RenderWindow& window);
+    void run();
 };
 
 #endif

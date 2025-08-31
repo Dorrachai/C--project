@@ -35,6 +35,6 @@ bool Button::isClicked(const sf::Event& event, const sf::RenderWindow& window) c
     if (event.type != sf::Event::MouseButtonPressed || event.mouseButton.button != sf::Mouse::Left)
         return false;
 
-    sf::Vector2i mp(event.mouseButton.x, event.mouseButton.y);
+    auto mp = sf::Mouse::getPosition(window);
     return isHovered(mp);
 }

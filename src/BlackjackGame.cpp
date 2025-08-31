@@ -89,6 +89,7 @@ void BlackjackGame::startRound() {
 
 void BlackjackGame::handleEvent(const sf::Event& event, const sf::RenderWindow& window) {
     if (phase != Phase::PlayerTurn || players.empty()) return;
+    if (currentPlayer >= players.size()) return;
 
     auto* p = players[currentPlayer];
 
@@ -216,7 +217,7 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
         hitButton.draw(window);
         standButton.draw(window);
 
-        if (!players.empty()) {
+        if (!players.empty() && currentPlayer < players.size()) {
             sf::Text turnText("Turn: " + players[currentPlayer]->getName(), font, 22);
             turnText.setFillColor(sf::Color::Blue);
             turnText.setPosition(50.f, 560.f);

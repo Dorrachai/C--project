@@ -32,12 +32,10 @@ int main() {
     bool gameStarted = false;
     int currentPlayerIndex = 0;
 
-    // Load background images
     sf::Texture homeTexture, gameTexture;
     sf::Sprite homeSprite, gameSprite;
     bool hasHomeBackground = false, hasGameBackground = false;
     
-    // Load home/landing page background
     if (homeTexture.loadFromFile("home.png")) {
         homeSprite.setTexture(homeTexture);
         sf::Vector2u textureSize = homeTexture.getSize();
@@ -48,7 +46,6 @@ int main() {
         hasHomeBackground = true;
     }
     
-    // Load game/blackjack table background
     if (gameTexture.loadFromFile("bj_table.jpg")) {
         gameSprite.setTexture(gameTexture);
         sf::Vector2u textureSize = gameTexture.getSize();
@@ -101,17 +98,13 @@ int main() {
             }
         }
 
-        // Clear window and draw appropriate background
         if (!inputCompleted && hasHomeBackground) {
-            // Landing page - use home background
             window.clear();
             window.draw(homeSprite);
         } else if (inputCompleted && hasGameBackground) {
-            // Game page - use blackjack table background
             window.clear();
             window.draw(gameSprite);
         } else {
-            // Fallback to green background
             window.clear(sf::Color::Green);
         }
         if (!inputCompleted) {
@@ -147,7 +140,6 @@ int main() {
                 gameStarted = true;
             }
 
-            // Vanlig spel-loop
             game->update();
             game->draw(window);
         }

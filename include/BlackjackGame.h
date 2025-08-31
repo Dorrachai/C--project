@@ -18,7 +18,8 @@ private:
     Dealer* dealer;
     std::vector<Participant*> players;
     FileManager fileManager;
-
+    int totalWins = 0; 
+    
     Phase phase = Phase::None;
     std::size_t currentPlayer = 0;
 

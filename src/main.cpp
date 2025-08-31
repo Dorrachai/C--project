@@ -6,7 +6,7 @@
 #include <vector>
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(1024, 768), "Blackjack");
+    sf::RenderWindow window(sf::VideoMode(1024, 768), "Blackjack", sf::Style::Default);
     window.setFramerateLimit(60);
 
     BlackjackGame* game = new BlackjackGame();

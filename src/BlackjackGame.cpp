@@ -37,6 +37,8 @@ BlackjackGame::BlackjackGame()
     standButton.setFont(font);
 
     phase = Phase::None;
+
+    totalWins = fileManager.loadTotalWins();
 }
 
 BlackjackGame::~BlackjackGame() {
@@ -133,6 +135,8 @@ void BlackjackGame::update() {
         head << "Dealer: " << dealer->getHand()->toString();
         resultsLines.push_back(head.str());
 
+        int roundWins = 0;
+
         for (auto* p : players) {
             int pv = p->getHandValue();
             int dv = resultsDealerValue;
@@ -142,8 +146,10 @@ void BlackjackGame::update() {
                 verdict = "LOSE (bust)";
             } else if (dv > 21) {
                 verdict = "WIN (dealer bust)";
+                roundWins += 1;
             } else if (pv > dv) {
                 verdict = "WIN";
+                roundWins += 1;
             } else if (pv < dv) {
                 verdict = "LOSE";
             } else {
@@ -155,6 +161,12 @@ void BlackjackGame::update() {
             resultsLines.push_back(row.str());
 
             std::cout << row.str() << std::endl;
+        }
+
+        if (roundWins > 0) {
+            totalWins += roundWins;
+            fileManager.saveTotalWins(totalWins);
+            std::cout << "Total wins (all players combined): " << totalWins << std::endl;
         }
 
         phase = Phase::Results;
@@ -250,6 +262,11 @@ void BlackjackGame::draw(sf::RenderWindow& window) {
             line.setPosition(px, lineY + i * lineStep);
             window.draw(line);
         }
+
+        sf::Text totalWinsText("Total wins: " + std::to_string(totalWins), font, 22);
+        totalWinsText.setFillColor(sf::Color::Cyan);
+        totalWinsText.setPosition(px, py + panelH - 70.f);
+        window.draw(totalWinsText);
 
         sf::Text hint("Press Enter for new round", font, 20);
         hint.setFillColor(sf::Color(200, 200, 200));

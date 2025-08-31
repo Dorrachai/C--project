@@ -4,14 +4,14 @@
 Dealer::Dealer() : Participant("Dealer") {}
 
 void Dealer::play() {
-    std::cout << "Dealer's hand: " << hand.toString() << std::endl;
+    std::cout << "Dealer's hand: " << getHand()->toString() << std::endl;
     
-    while (hand.getValue() < 17) {
+    while (getHand()->getValue() < 17) {
         std::cout << "Dealer hits" << std::endl;
         break;
     }
     
-    if (hand.getValue() >= 17) {
+    if (getHand()->getValue() >= 17) {
         std::cout << "Dealer stands" << std::endl;
     }
 }

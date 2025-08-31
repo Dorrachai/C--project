@@ -6,7 +6,7 @@
 #include "Card.h"
 
 class Participant {
-protected:
+private:
     std::string name;
     Hand hand;
 
